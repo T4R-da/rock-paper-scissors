@@ -2,9 +2,8 @@
 #include <cstdlib>
 #include <ctime>
 #include <limits>
-#include <windows.h>
-#include <cstdint>
 #include <thread>
+#include <chrono>
 
 #define print(x) std::cout << x
 #define println(x) std::cout << x << std::endl
@@ -12,12 +11,19 @@
 // ================= CONSOLE UTILS =================
 void setcolor(uint8_t c)
 {
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), c);
+    // ANSI escape codes for colors
+    switch (c) {
+        case 10: std::cout << "\033[32m"; break; // Green
+        case 11: std::cout << "\033[36m"; break; // Cyan
+        case 12: std::cout << "\033[31m"; break; // Red
+        case 14: std::cout << "\033[33m"; break; // Yellow
+        default: std::cout << "\033[0m"; break; // Reset
+    }
 }
 
 void resetcolor()
 {
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+    std::cout << "\033[0m";
 }
 
 // FIX 1: ripristinata wait(ms) con sleep corretto
@@ -28,7 +34,7 @@ void wait(int ms)
 
 void clearScreen()
 {
-    system("cls");
+    std::cout << "\033[2J\033[1;1H";
 }
 
 // ================= GAME UTILS =================
@@ -56,14 +62,18 @@ int result(int p, int c)
 }
 
 // ================= INPUT =================
-int getKeyPress()
+int getMenuChoice()
 {
-    while (true)
-    {
-        if (GetAsyncKeyState(VK_UP) & 1)     return -1;
-        if (GetAsyncKeyState(VK_DOWN) & 1)   return 1;
-        if (GetAsyncKeyState(VK_RETURN) & 1) return 0;
-        Sleep(10);
+    int choice;
+    while (true) {
+        print("Enter your choice (1-3): ");
+        std::cin >> choice;
+        if (choice >= 1 && choice <= 3) {
+            return choice - 1; // 0 for START, 1 for RULES, 2 for EXIT
+        }
+        println("Invalid choice. Please enter 1, 2, or 3.");
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
 }
 
@@ -71,25 +81,19 @@ int getKeyPress()
 void pressToContinue()
 {
     setcolor(14);
-    println("\nWAIT 5 SECONDS TO CONTINUE");
+    println("\nPress ENTER to continue...");
     resetcolor();
 
-    // Svuota il '\n' lasciato da std::cin >> p
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-    Sleep(5000);
+    std::cin.get();
 }
 
 // FIX 2: helper che aspetta INVIO tramite polling (senza toccare cin)
 void waitForEnter()
 {
-    Sleep(150);
-    while (true)
-    {
-        if (GetAsyncKeyState(VK_RETURN) & 1)
-            break;
-        Sleep(10);
-    }
+    println("Press ENTER to continue...");
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    std::cin.get();
 }
 
 // ================= TITLE =================
@@ -116,54 +120,21 @@ void titleScreen()
 // ================= MENU =================
 int menuSelector()
 {
-    int selected = 0;
-    const char* items[] = { "START GAME", "RULES", "EXIT" };
+    clearScreen();
 
-    while (true)
-    {
-        clearScreen();
+    setcolor(11);
+    println("======= MAIN MENU =======");
+    resetcolor();
 
-        setcolor(11);
-        println("======= MAIN MENU =======");
-        resetcolor();
+    println("1. START GAME");
+    println("2. RULES");
+    println("3. EXIT");
 
-        for (int i = 0; i < 3; i++)
-        {
-            if (i == selected)
-            {
-                setcolor(10);
-                print(" > ");
-                println(items[i]);
-                resetcolor();
-            }
-            else
-            {
-                print("   ");
-                println(items[i]);
-            }
-        }
+    setcolor(11);
+    println("=========================");
+    resetcolor();
 
-        setcolor(11);
-        println("=========================");
-        resetcolor();
-
-        int input = getKeyPress();
-
-        if (input == -1)
-        {
-            selected--;
-            if (selected < 0) selected = 2;
-        }
-        else if (input == 1)
-        {
-            selected++;
-            if (selected > 2) selected = 0;
-        }
-        else if (input == 0)
-        {
-            return selected;
-        }
-    }
+    return getMenuChoice();
 }
 
 // ================= CPU =================
